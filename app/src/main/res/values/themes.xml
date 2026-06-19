@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base activity theme. The actual UI is themed with Material3 in Compose
+         (see ui/theme/Theme.kt); this only styles the splash window. -->
+    <style name="Theme.Oryxen" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#002933</item>
+        <item name="android:windowBackground">#F7F7ED</item>
+    </style>
+</resources>
