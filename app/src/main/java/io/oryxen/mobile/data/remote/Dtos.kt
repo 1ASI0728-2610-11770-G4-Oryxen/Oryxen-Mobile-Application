@@ -78,6 +78,18 @@ data class CheckoutResponse(
 data class CheckoutRequestBody(val planId: String)
 
 @Serializable
+data class SubscriptionResponse(
+    val id: String,
+    val userId: String,
+    val plan: String,
+    val status: String,
+    val startedAt: String,
+    val expiresAt: String? = null,
+    val nextBillingDate: String? = null,
+    val canceledAt: String? = null,
+)
+
+@Serializable
 data class NotificationResponse(
     val id: String,
     val userId: String,
@@ -93,3 +105,83 @@ data class NotificationResponse(
 
 @Serializable
 data class UnreadCountResponse(val count: Int)
+
+@Serializable
+data class DashboardResponse(
+    val totalPlants: Int,
+    val healthyPlants: Int,
+    val warningPlants: Int,
+    val criticalPlants: Int,
+    val avgHumidity: Double,
+    val avgTemperature: Double,
+    val avgSoilMoisture: Double,
+    val avgLightLevel: Double,
+    val avgHealthScore: Double,
+    val totalReadings: Int,
+    val plantSummaries: List<PlantHealthSummaryDto>,
+)
+
+@Serializable
+data class PlantHealthSummaryDto(
+    val plantId: String,
+    val plantName: String,
+    val plantType: String,
+    val status: String,
+    val avgHealthScore: Double,
+    val avgSoilMoisture: Double,
+    val readingCount: Int,
+    val lastReadingAt: String? = null,
+)
+
+@Serializable
+data class TrendPointDto(
+    val label: String,
+    val avgHealthScore: Double,
+    val avgSoilMoisture: Double,
+    val avgTemperature: Double,
+    val avgHumidity: Double,
+    val readingCount: Int,
+)
+
+@Serializable
+data class PlantTrendResponse(
+    val plantId: String,
+    val plantName: String,
+    val daily: List<TrendPointDto>,
+    val weekly: List<TrendPointDto>,
+    val monthly: List<TrendPointDto>,
+)
+
+@Serializable
+data class CommunityPostResponse(
+    val id: String,
+    val userId: String,
+    val authorName: String,
+    val title: String,
+    val content: String,
+    val imageUrl: String? = null,
+    val likesCount: Int,
+    val likedByCurrentUser: Boolean,
+    val createdAt: String,
+    val comments: List<CommunityCommentResponse>,
+)
+
+@Serializable
+data class CommunityCommentResponse(
+    val id: String,
+    val postId: String,
+    val userId: String,
+    val authorName: String,
+    val content: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class CommunityLikeResponse(
+    val postId: String,
+    val likesCount: Int,
+    val likedByCurrentUser: Boolean,
+)
+
+@Serializable
+data class CreateCommentRequest(val content: String)

@@ -39,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.oryxen.mobile.data.BillingRepository
 import io.oryxen.mobile.data.remote.PlanResponse
+import io.oryxen.mobile.data.remote.SubscriptionResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 
 data class PlansUiState(
     val plans: List<PlanResponse> = emptyList(),
+    val subscription: SubscriptionResponse? = null,
     val loading: Boolean = false,
     val error: String? = null,
     val checkoutLoading: String? = null,
@@ -64,7 +66,8 @@ class PlansViewModel : ViewModel() {
             _state.value = _state.value.copy(loading = true, error = null)
             try {
                 val plans = BillingRepository.getPlans()
-                _state.value = PlansUiState(plans = plans, loading = false)
+                val sub = try { BillingRepository.getCurrentSubscription() } catch (_: Exception) { null }
+                _state.value = PlansUiState(plans = plans, subscription = sub, loading = false)
             } catch (e: Exception) {
                 _state.value = PlansUiState(
                     loading = false,
@@ -141,12 +144,21 @@ fun PlansScreen(
                 }
 
                 else -> {
+                    if (state.subscription != null) {
+                        Text(
+                            text = "Current Plan: ${state.subscription!!.plan}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                    }
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(state.plans) { plan ->
                             PlanCard(
                                 plan = plan,
+                                currentPlan = state.subscription?.plan,
                                 isLoading = state.checkoutLoading == plan.id,
                                 onUpgrade = {
                                     viewModel.upgrade(plan.id) { url ->
@@ -166,10 +178,12 @@ fun PlansScreen(
 @Composable
 private fun PlanCard(
     plan: PlanResponse,
+    currentPlan: String?,
     isLoading: Boolean,
     onUpgrade: () -> Unit,
 ) {
     val isPremium = plan.name.lowercase().contains("premium")
+    val isCurrent = currentPlan != null && currentPlan.equals(plan.name, ignoreCase = true)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -200,12 +214,18 @@ private fun PlanCard(
             }
             Button(
                 onClick = onUpgrade,
-                enabled = isPremium && !isLoading,
+                enabled = (isPremium && !isLoading && !isCurrent),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
             ) {
-                Text(if (isPremium) "Upgrade to Premium" else "Current Plan")
+                Text(
+                    when {
+                        isCurrent -> "Current Plan"
+                        isPremium -> "Upgrade to Premium"
+                        else -> "Current Plan"
+                    }
+                )
             }
         }
     }

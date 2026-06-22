@@ -18,7 +18,9 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,12 +28,17 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +49,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.oryxen.mobile.data.TelemetryRepository
-import io.oryxen.mobile.data.remote.SessionManager
+import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.data.remote.TelemetryReading
 import io.oryxen.mobile.domain.healthStatusOf
 import kotlinx.coroutines.Job
@@ -61,8 +68,7 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel : ViewModel() {
-    // Demo plant shared with the simulator / web app for the Sprint 1 walkthrough.
-    private val plantId = "11111111-2222-3333-4444-555555555555"
+    private val provider = ApiProvider.instance
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
@@ -70,10 +76,17 @@ class DashboardViewModel : ViewModel() {
     private var pollingJob: Job? = null
 
     init {
+        val plantId = provider.secureStorage.currentPlantId
+        if (!plantId.isNullOrBlank()) {
+            startPolling()
+        }
+    }
+
+    fun setPlantId(plantId: String) {
+        provider.secureStorage.currentPlantId = plantId.trim()
         startPolling()
     }
 
-    /** Clean polling loop: refreshes every 5s and stops when the ViewModel is cleared. */
     private fun startPolling() {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
@@ -85,6 +98,7 @@ class DashboardViewModel : ViewModel() {
     }
 
     private suspend fun refresh() {
+        val plantId = provider.secureStorage.currentPlantId ?: return
         try {
             val data = TelemetryRepository.forPlant(plantId)
             _state.update { it.copy(readings = data, error = null) }
@@ -94,6 +108,7 @@ class DashboardViewModel : ViewModel() {
     }
 
     fun sendSample() {
+        val plantId = provider.secureStorage.currentPlantId ?: return
         _state.update { it.copy(sending = true) }
         viewModelScope.launch {
             try {
@@ -123,24 +138,34 @@ fun DashboardScreen(
     onNavigateDiagnosis: () -> Unit = {},
     onNavigatePlans: () -> Unit = {},
     onNavigateNotifications: () -> Unit = {},
+    onNavigateAnalytics: () -> Unit = {},
+    onNavigateCommunity: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val latest = state.readings.firstOrNull()
+    val provider = ApiProvider.instance
+    val savedPlantId = provider.secureStorage.currentPlantId ?: ""
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Oryxen · ${SessionManager.fullName ?: "Farmer"}") },
+                title = { Text("Oryxen · ${provider.session.fullName ?: "Farmer"}") },
                 actions = {
                     IconButton(onClick = onNavigateNotifications) {
                         Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                    }
+                    IconButton(onClick = onNavigateAnalytics) {
+                        Icon(Icons.Filled.Leaderboard, contentDescription = "Crop Analytics")
                     }
                     IconButton(onClick = onNavigateDiagnosis) {
                         Icon(Icons.Filled.CameraAlt, contentDescription = "AI Diagnosis")
                     }
                     IconButton(onClick = onNavigatePlans) {
                         Icon(Icons.Filled.CreditCard, contentDescription = "Plans & Billing")
+                    }
+                    IconButton(onClick = onNavigateCommunity) {
+                        Icon(Icons.Filled.Groups, contentDescription = "Community")
                     }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
@@ -149,8 +174,10 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.sendSample() }) {
-                Icon(Icons.Filled.Add, contentDescription = "Send test reading")
+            if (savedPlantId.isNotBlank()) {
+                FloatingActionButton(onClick = { viewModel.sendSample() }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Send test reading")
+                }
             }
         },
     ) { padding ->
@@ -160,6 +187,20 @@ fun DashboardScreen(
                 .padding(padding)
                 .padding(16.dp),
         ) {
+            PlantIdConfigCard(
+                savedPlantId = savedPlantId,
+                onSave = { viewModel.setPlantId(it) },
+            )
+
+            if (savedPlantId.isBlank()) {
+                Text(
+                    "Enter a Plant ID to start monitoring.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+                return@Scaffold
+            }
+
             if (latest != null) {
                 val status = healthStatusOf(latest.healthScore)
                 Card(
@@ -194,6 +235,42 @@ fun DashboardScreen(
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.readings) { reading -> TelemetryRow(reading) }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlantIdConfigCard(
+    savedPlantId: String,
+    onSave: (String) -> Unit,
+) {
+    var plantIdInput by remember { mutableStateOf(savedPlantId) }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Plant ID",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            OutlinedTextField(
+                value = plantIdInput,
+                onValueChange = { plantIdInput = it },
+                label = { Text("Plant UUID") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+            TextButton(
+                onClick = { onSave(plantIdInput) },
+                enabled = plantIdInput.isNotBlank(),
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text("Connect")
             }
         }
     }

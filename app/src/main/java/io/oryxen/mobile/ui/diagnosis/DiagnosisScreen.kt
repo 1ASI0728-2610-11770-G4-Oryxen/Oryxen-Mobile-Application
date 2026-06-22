@@ -24,7 +24,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -35,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.oryxen.mobile.data.DiagnosisRepository
+import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.data.remote.DiagnosisResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +51,8 @@ class DiagnosisViewModel : ViewModel() {
     private val _state = MutableStateFlow(DiagnosisUiState(loading = true))
     val state: StateFlow<DiagnosisUiState> = _state.asStateFlow()
 
-    private val demoPlantId = "11111111-2222-3333-4444-555555555555"
+    private val currentPlantId: String?
+        get() = ApiProvider.instance.secureStorage.currentPlantId
 
     init {
         loadHistory()
@@ -59,9 +60,17 @@ class DiagnosisViewModel : ViewModel() {
 
     fun loadHistory() {
         viewModelScope.launch {
+            val plantId = currentPlantId
+            if (plantId.isNullOrBlank()) {
+                _state.value = DiagnosisUiState(
+                    loading = false,
+                    error = "No plant selected. Go to Dashboard and enter a Plant ID.",
+                )
+                return@launch
+            }
             _state.value = _state.value.copy(loading = true, error = null)
             try {
-                val diagnoses = DiagnosisRepository.forPlant(demoPlantId)
+                val diagnoses = DiagnosisRepository.forPlant(plantId)
                 _state.value = DiagnosisUiState(diagnoses = diagnoses, loading = false)
             } catch (e: Exception) {
                 _state.value = DiagnosisUiState(
