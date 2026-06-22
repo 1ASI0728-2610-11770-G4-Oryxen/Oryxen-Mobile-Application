@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -115,7 +118,13 @@ class DashboardViewModel : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(onLogout: () -> Unit, viewModel: DashboardViewModel = viewModel()) {
+fun DashboardScreen(
+    onLogout: () -> Unit,
+    onNavigateDiagnosis: () -> Unit = {},
+    onNavigatePlans: () -> Unit = {},
+    onNavigateNotifications: () -> Unit = {},
+    viewModel: DashboardViewModel = viewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val latest = state.readings.firstOrNull()
 
@@ -124,6 +133,15 @@ fun DashboardScreen(onLogout: () -> Unit, viewModel: DashboardViewModel = viewMo
             TopAppBar(
                 title = { Text("Oryxen · ${SessionManager.fullName ?: "Farmer"}") },
                 actions = {
+                    IconButton(onClick = onNavigateNotifications) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                    }
+                    IconButton(onClick = onNavigateDiagnosis) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "AI Diagnosis")
+                    }
+                    IconButton(onClick = onNavigatePlans) {
+                        Icon(Icons.Filled.CreditCard, contentDescription = "Plans & Billing")
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
                     }

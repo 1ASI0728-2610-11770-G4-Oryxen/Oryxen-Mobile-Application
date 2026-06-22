@@ -6,11 +6,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.oryxen.mobile.data.remote.SessionManager
 import io.oryxen.mobile.ui.auth.LoginScreen
+import io.oryxen.mobile.ui.billing.PlansScreen
 import io.oryxen.mobile.ui.dashboard.DashboardScreen
+import io.oryxen.mobile.ui.diagnosis.DiagnosisScreen
+import io.oryxen.mobile.ui.notifications.NotificationsScreen
 
 object Routes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
+    const val DIAGNOSIS = "diagnosis"
+    const val PLANS = "plans"
+    const val NOTIFICATIONS = "notifications"
 }
 
 @Composable
@@ -35,6 +41,36 @@ fun OryxenNavHost() {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
+                },
+                onNavigateDiagnosis = {
+                    navController.navigate(Routes.DIAGNOSIS)
+                },
+                onNavigatePlans = {
+                    navController.navigate(Routes.PLANS)
+                },
+                onNavigateNotifications = {
+                    navController.navigate(Routes.NOTIFICATIONS)
+                },
+            )
+        }
+        composable(Routes.DIAGNOSIS) {
+            DiagnosisScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable(Routes.PLANS) {
+            PlansScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable(Routes.NOTIFICATIONS) {
+            NotificationsScreen(
+                onBack = {
+                    navController.popBackStack()
                 },
             )
         }

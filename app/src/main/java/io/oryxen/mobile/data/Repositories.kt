@@ -2,7 +2,12 @@ package io.oryxen.mobile.data
 
 import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.data.remote.AuthResponse
+import io.oryxen.mobile.data.remote.CheckoutResponse
+import io.oryxen.mobile.data.remote.DiagnosisResponse
+import io.oryxen.mobile.data.remote.NotificationResponse
+import io.oryxen.mobile.data.remote.UnreadCountResponse
 import io.oryxen.mobile.data.remote.LoginRequest
+import io.oryxen.mobile.data.remote.PlanResponse
 import io.oryxen.mobile.data.remote.RegisterRequest
 import io.oryxen.mobile.data.remote.SessionManager
 import io.oryxen.mobile.data.remote.TelemetryIngestRequest
@@ -39,4 +44,28 @@ object TelemetryRepository {
                 soilMoisture = Random.nextInt(15, 81).toDouble(),
             ),
         )
+}
+
+object DiagnosisRepository {
+    suspend fun forPlant(plantId: String): List<DiagnosisResponse> =
+        ApiProvider.api.diagnosesByPlant(plantId)
+}
+
+object BillingRepository {
+    suspend fun getPlans(): List<PlanResponse> =
+        ApiProvider.api.getPlans()
+
+    suspend fun createCheckout(planId: String): CheckoutResponse =
+        ApiProvider.api.createCheckout(CheckoutRequestBody(planId))
+}
+
+object NotificationRepository {
+    suspend fun getAll(): List<NotificationResponse> =
+        ApiProvider.api.getNotifications()
+
+    suspend fun getUnreadCount(): UnreadCountResponse =
+        ApiProvider.api.getUnreadCount()
+
+    suspend fun markRead(id: String) =
+        ApiProvider.api.markNotificationRead(id)
 }

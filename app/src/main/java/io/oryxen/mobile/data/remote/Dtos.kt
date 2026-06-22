@@ -43,3 +43,53 @@ data class TelemetryIngestRequest(
     val lightLevel: Double,
     val soilMoisture: Double,
 )
+
+@Serializable
+data class DiagnosisResponse(
+    val id: String,
+    val plantId: String,
+    val imageUrl: String,
+    val detectedPest: String,
+    val confidenceScore: Double,
+    val recommendation: String,
+    val status: String,
+    val createdAt: String,
+    val analyzedAt: String? = null,
+)
+
+@Serializable
+data class PlanResponse(
+    val id: String,
+    val name: String,
+    val price: Double,
+    val currency: String,
+    val billingCycleMonths: Int,
+    val features: String,
+    val isActive: Boolean,
+)
+
+@Serializable
+data class CheckoutResponse(
+    val sessionId: String,
+    val checkoutUrl: String,
+)
+
+@Serializable
+data class CheckoutRequestBody(val planId: String)
+
+@Serializable
+data class NotificationResponse(
+    val id: String,
+    val userId: String,
+    val plantId: String? = null,
+    val type: Int,
+    val channel: Int,
+    val title: String,
+    val message: String,
+    val isRead: Boolean,
+    val createdAt: String,
+    val sentAt: String? = null,
+)
+
+@Serializable
+data class UnreadCountResponse(val count: Int)
