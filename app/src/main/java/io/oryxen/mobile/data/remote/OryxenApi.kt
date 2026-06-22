@@ -45,7 +45,6 @@ interface OryxenApi {
     suspend fun getPlans(): List<PlanResponse>
 
     @POST("subscriptions/checkout")
-    @Multipart
     suspend fun createCheckout(@Body body: CheckoutRequestBody): CheckoutResponse
 
     @GET("subscriptions/current")

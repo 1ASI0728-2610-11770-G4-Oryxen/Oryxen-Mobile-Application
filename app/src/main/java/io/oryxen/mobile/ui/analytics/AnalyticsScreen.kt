@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.oryxen.mobile.data.AnalyticsRepository
+import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.data.remote.DashboardResponse
 import io.oryxen.mobile.data.remote.TrendPointDto
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,10 +50,18 @@ class AnalyticsViewModel : ViewModel() {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val dashboard = AnalyticsRepository.getDashboard()
+                val savedId = ApiProvider.instance.secureStorage.currentPlantId
+
+                val preferred = if (savedId != null) {
+                    dashboard.plantSummaries.firstOrNull { p -> p.plantId == savedId }
+                } else null
+
+                val firstPlant = preferred ?: dashboard.plantSummaries.firstOrNull()
+
                 _state.update {
                     it.copy(dashboard = dashboard, loading = false)
                 }
-                val firstPlant = dashboard.plantSummaries.firstOrNull()
+
                 if (firstPlant != null) {
                     loadTrends(firstPlant.plantId, firstPlant.plantName)
                 }
@@ -178,10 +187,7 @@ fun AnalyticsScreen(
                                                 .size(12.dp)
                                                 .clip(CircleShape)
                                                 .then(
-                                                    when (plant.status) {
-                                                        "healthy" -> Modifier.fillMaxSize()
-                                                        else -> Modifier.fillMaxSize()
-                                                    }
+                                                    Modifier.fillMaxSize()
                                                 ),
                                         )
                                         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
