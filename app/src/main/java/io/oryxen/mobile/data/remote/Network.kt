@@ -64,7 +64,8 @@ class ApiProvider(context: Context) {
         .create(OryxenApi::class.java)
 
     companion object {
-        const val BASE_URL = "http://10.0.2.2:5170/api/v1/"
+        /** Backend base URL, injected per build type (debug = emulator loopback, release = HTTPS). */
+        val BASE_URL: String = io.oryxen.mobile.BuildConfig.API_BASE_URL
 
         lateinit var instance: ApiProvider
             private set

@@ -44,6 +44,9 @@ interface OryxenApi {
     @GET("ai/plants/{plantId}/diagnoses")
     suspend fun diagnosesByPlant(@Path("plantId") plantId: String): List<DiagnosisResponse>
 
+    @POST("ai/chat")
+    suspend fun chat(@Body body: ChatRequest): ChatResponse
+
     @GET("plans")
     suspend fun getPlans(): List<PlanResponse>
 
@@ -109,5 +112,11 @@ interface OryxenApi {
 
     @POST("plants/{id}/watering")
     suspend fun waterPlant(@Path("id") id: String): WateringResponse
+
+    @POST("plants/{id}/sensor")
+    suspend fun assignSensor(
+        @Path("id") id: String,
+        @Body body: AssignSensorRequest,
+    ): PlantResponse
 }
 

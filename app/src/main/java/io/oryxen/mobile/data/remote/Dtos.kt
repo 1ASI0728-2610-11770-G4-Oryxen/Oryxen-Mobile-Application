@@ -222,3 +222,23 @@ data class WateringResponse(
     val plantId: String,
     val wateredAt: String,
 )
+
+// ── Sensor assignment (Sensor Lite -> plant) ────────────────────────────
+
+@Serializable
+data class AssignSensorRequest(val deviceId: String)
+
+// ── Chat assistant (server-side Gemini via POST /ai/chat) ───────────────
+
+@Serializable
+data class ChatRequest(
+    val message: String,
+    val context: String? = null,
+)
+
+@Serializable
+data class ChatResponse(
+    val reply: String,
+    val provider: String,
+    val generatedAt: String,
+)
