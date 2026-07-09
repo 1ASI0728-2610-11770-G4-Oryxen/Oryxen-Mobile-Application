@@ -145,7 +145,6 @@ class CommunityViewModel : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(
-    onBack: () -> Unit,
     viewModel: CommunityViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -154,11 +153,7 @@ fun CommunityScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Comunidad Agrícola") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                },
+
                 actions = {
                     TextButton(onClick = { viewModel.toggleCreateForm() }) {
                         Text(if (state.showCreateForm) "Cancelar" else "Nuevo")

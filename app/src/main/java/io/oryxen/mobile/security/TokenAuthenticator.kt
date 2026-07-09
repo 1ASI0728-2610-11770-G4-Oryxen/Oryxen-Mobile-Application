@@ -64,6 +64,7 @@ class TokenAuthenticator(
                         refreshToken = refreshResponse.refreshToken,
                         userId = userId,
                         fullName = refreshResponse.fullName,
+                        email = refreshResponse.email,
                         roles = refreshResponse.roles,
                     )
 

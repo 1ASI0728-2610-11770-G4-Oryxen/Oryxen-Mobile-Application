@@ -1,27 +1,34 @@
 package io.oryxen.mobile.ui.analytics
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.oryxen.mobile.data.AnalyticsRepository
-import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.data.remote.DashboardResponse
+import io.oryxen.mobile.data.remote.PlantHealthSummaryDto
+import io.oryxen.mobile.data.remote.PlantTrendResponse
 import io.oryxen.mobile.data.remote.TrendPointDto
+import io.oryxen.mobile.ui.theme.OryxenGreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,207 +37,181 @@ import kotlinx.coroutines.launch
 
 data class AnalyticsUiState(
     val dashboard: DashboardResponse? = null,
-    val dailyTrends: List<TrendPointDto> = emptyList(),
     val selectedPlantId: String? = null,
-    val selectedPlantName: String? = null,
+    val trends: PlantTrendResponse? = null,
+    val selectedPeriod: String = "Daily", // Daily, Weekly, Monthly
     val loading: Boolean = false,
     val error: String? = null,
 )
 
 class AnalyticsViewModel : ViewModel() {
-    private val _state = MutableStateFlow(AnalyticsUiState(loading = true))
+    private val _state = MutableStateFlow(AnalyticsUiState())
     val state: StateFlow<AnalyticsUiState> = _state.asStateFlow()
 
     init {
         loadDashboard()
     }
 
-    fun loadDashboard() {
+    private fun loadDashboard() {
+        _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
             try {
-                val dashboard = AnalyticsRepository.getDashboard()
-                val savedId = ApiProvider.instance.secureStorage.currentPlantId
-
-                val preferred = if (savedId != null) {
-                    dashboard.plantSummaries.firstOrNull { p -> p.plantId == savedId }
-                } else null
-
-                val firstPlant = preferred ?: dashboard.plantSummaries.firstOrNull()
-
-                _state.update {
-                    it.copy(dashboard = dashboard, loading = false)
+                val dash = AnalyticsRepository.getDashboard()
+                _state.update { 
+                    it.copy(
+                        dashboard = dash, 
+                        loading = false,
+                        selectedPlantId = dash.plantSummaries.firstOrNull()?.plantId
+                    ) 
                 }
-
-                if (firstPlant != null) {
-                    loadTrends(firstPlant.plantId, firstPlant.plantName)
-                }
+                dash.plantSummaries.firstOrNull()?.plantId?.let { loadTrends(it) }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message) }
+                _state.update { it.copy(loading = false, error = e.message ?: "Failed to load dashboard") }
             }
         }
     }
 
-    fun loadTrends(plantId: String, plantName: String) {
-        _state.update { it.copy(selectedPlantId = plantId, selectedPlantName = plantName) }
+    fun selectPlant(plantId: String) {
+        _state.update { it.copy(selectedPlantId = plantId) }
+        loadTrends(plantId)
+    }
+
+    fun setPeriod(period: String) {
+        _state.update { it.copy(selectedPeriod = period) }
+    }
+
+    private fun loadTrends(plantId: String) {
         viewModelScope.launch {
             try {
                 val trends = AnalyticsRepository.getPlantTrends(plantId)
-                _state.update { it.copy(dailyTrends = trends.daily) }
+                _state.update { it.copy(trends = trends) }
             } catch (e: Exception) {
-                _state.update { it.copy(dailyTrends = emptyList()) }
+                // Handle silently for now or show error
             }
         }
     }
-}
-
-private fun healthColor(score: Double): Color = when {
-    score >= 80 -> Color(0xFF22C55E)
-    score >= 60 -> Color(0xFF3B82F6)
-    score >= 30 -> Color(0xFFF59E0B)
-    else -> Color(0xFFEF4444)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
-    onBack: () -> Unit,
-    viewModel: AnalyticsViewModel = viewModel(),
+    viewModel: AnalyticsViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Crop Analytics") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .padding(bottom = 80.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        Text(
+            text = "History & Trends",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (state.loading && state.dashboard == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return
+        }
+
+        if (state.error != null) {
+            Text("Error: ${state.error}", color = MaterialTheme.colorScheme.error)
+            return
+        }
+
+        state.dashboard?.let { dash ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DashboardMetricCard(
+                    title = "Avg Health",
+                    value = "${dash.avgHealthScore.toInt()}/100",
+                    modifier = Modifier.weight(1f)
+                )
+                DashboardMetricCard(
+                    title = "Avg Temp",
+                    value = "${dash.avgTemperature.toInt()}°C",
+                    modifier = Modifier.weight(1f)
+                )
+                DashboardMetricCard(
+                    title = "Avg Hum",
+                    value = "${dash.avgHumidity.toInt()}%",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Select Plant",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-        ) {
-            when {
-                state.loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Text("Loading analytics...", modifier = Modifier.padding(top = 16.dp))
-                        }
-                    }
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(dash.plantSummaries) { plant ->
+                    PlantChip(
+                        plant = plant,
+                        isSelected = state.selectedPlantId == plant.plantId,
+                        onClick = { viewModel.selectPlant(plant.plantId) }
+                    )
                 }
+            }
 
-                state.error != null -> {
-                    Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { viewModel.loadDashboard() }, modifier = Modifier.padding(top = 12.dp)) {
-                        Text("Retry")
-                    }
-                }
+            Spacer(modifier = Modifier.height(24.dp))
 
-                state.dashboard == null -> {
-                    Text("No analytics data available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            state.trends?.let { trends ->
+                Text(
+                    text = "Health Trend",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                else -> {
-                    val d = state.dashboard!!
-                    Text("Dashboard Overview", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SummaryCard("Total", "${d.totalPlants}", Color(0xFF3B82F6), modifier = Modifier.weight(1f))
-                        SummaryCard("Healthy", "${d.healthyPlants}", Color(0xFF22C55E), modifier = Modifier.weight(1f))
-                        SummaryCard("Critical", "${d.criticalPlants}", Color(0xFFEF4444), modifier = Modifier.weight(1f))
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SummaryCard("Avg Health", "${d.avgHealthScore.toInt()}", healthColor(d.avgHealthScore), modifier = Modifier.weight(1f))
-                        SummaryCard("Soil Moist", "${d.avgSoilMoisture.toInt()}%", Color(0xFF8BC34A), modifier = Modifier.weight(1f))
-                        SummaryCard("Temp", "${d.avgTemperature.toInt()}°", Color(0xFFFF9800), modifier = Modifier.weight(1f))
-                    }
-
-                    if (d.plantSummaries.isNotEmpty()) {
-                        Text("Plants", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            items(d.plantSummaries) { plant ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = { viewModel.loadTrends(plant.plantId, plant.plantName) },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (state.selectedPlantId == plant.plantId)
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.surface,
-                                    ),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(12.dp)
-                                                .clip(CircleShape)
-                                                .then(
-                                                    Modifier.fillMaxSize()
-                                                ),
-                                        )
-                                        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                                            Text(plant.plantName, fontWeight = FontWeight.SemiBold)
-                                            Text(
-                                                "${plant.plantType}  ·  Health ${plant.avgHealthScore.toInt()}  ·  ${plant.readingCount} readings",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (state.dailyTrends.isNotEmpty()) {
-                            Text(
-                                "Daily Trends · ${state.selectedPlantName}",
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    listOf("Daily", "Weekly", "Monthly").forEach { period ->
+                        TextButton(
+                            onClick = { viewModel.setPeriod(period) },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (state.selectedPeriod == period) OryxenGreen else Color.Gray
                             )
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(state.dailyTrends) { point ->
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                        shape = RoundedCornerShape(8.dp),
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                        ) {
-                                            Text(point.label, fontWeight = FontWeight.Medium)
-                                            Text(
-                                                "Health ${point.avgHealthScore.toInt()}  ·  Soil ${point.avgSoilMoisture.toInt()}%",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = healthColor(point.avgHealthScore),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                        ) {
+                            Text(period)
                         }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val currentPoints = when (state.selectedPeriod) {
+                    "Daily" -> trends.daily
+                    "Weekly" -> trends.weekly
+                    "Monthly" -> trends.monthly
+                    else -> emptyList()
+                }
+
+                LineChart(
+                    points = currentPoints,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+            } ?: run {
+                if (state.selectedPlantId != null) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 }
             }
         }
@@ -238,14 +219,80 @@ fun AnalyticsScreen(
 }
 
 @Composable
-private fun SummaryCard(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f))) {
+fun DashboardMetricCard(title: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = color.copy(alpha = 0.8f))
+            Text(text = title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+fun PlantChip(plant: PlantHealthSummaryDto, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) OryxenGreen else MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = plant.plantName,
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun LineChart(points: List<TrendPointDto>, modifier: Modifier = Modifier) {
+    if (points.isEmpty()) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text("No data available for this period.")
+        }
+        return
+    }
+
+    val maxHealth = 100f
+    val minHealth = 0f
+
+    Canvas(modifier = modifier.padding(16.dp)) {
+        val width = size.width
+        val height = size.height
+        val spacePerPoint = width / (points.size.coerceAtLeast(2) - 1)
+
+        val path = Path()
+
+        points.forEachIndexed { index, point ->
+            val x = index * spacePerPoint
+            // health score ratio
+            val ratio = (point.avgHealthScore.toFloat() - minHealth) / (maxHealth - minHealth)
+            val y = height - (ratio * height)
+
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+            
+            drawCircle(
+                color = OryxenGreen,
+                radius = 4.dp.toPx(),
+                center = Offset(x, y)
+            )
+        }
+
+        drawPath(
+            path = path,
+            color = OryxenGreen,
+            style = Stroke(width = 2.dp.toPx())
+        )
     }
 }

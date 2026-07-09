@@ -210,8 +210,7 @@ private fun NotificationCard(
                     .size(10.dp)
                     .clip(CircleShape)
                     .background(severity.color),
-                contentAlignment = Alignment.Center,
-            )
+            ) {}
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -286,7 +285,7 @@ private fun notificationSeverity(type: Int): NotificationSeverity = when (type) 
         label = "System Update",
     )
     else -> NotificationSeverity(
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Color(0xFF6B7280),
         label = "Notification",
     )
 }

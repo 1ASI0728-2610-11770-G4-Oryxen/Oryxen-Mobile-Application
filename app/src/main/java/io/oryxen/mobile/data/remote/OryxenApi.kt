@@ -3,12 +3,15 @@ package io.oryxen.mobile.data.remote
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+
 
 /** Retrofit contract mirroring the Oryxen .NET backend (`/api/v1`). */
 interface OryxenApi {
@@ -56,14 +59,16 @@ interface OryxenApi {
     @GET("notifications/unread/count")
     suspend fun getUnreadCount(): UnreadCountResponse
 
-    @PATCH("notifications/{id}/read")
-    suspend fun markNotificationRead(@Path("id") id: String)
-
     @GET("analytics/dashboard")
     suspend fun getDashboard(): DashboardResponse
 
     @GET("analytics/plants/{plantId}/trends")
     suspend fun getPlantTrends(@Path("plantId") plantId: String): PlantTrendResponse
+
+    @PATCH("notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: String)
+
+
 
     @GET("community/feed")
     suspend fun getCommunityFeed(): List<CommunityPostResponse>
@@ -84,4 +89,25 @@ interface OryxenApi {
 
     @POST("community/posts/{id}/likes")
     suspend fun toggleCommunityLike(@Path("id") postId: String): CommunityLikeResponse
+
+    // ── Plants ──────────────────────────────────────────────────────────
+
+    @GET("users/{userId}/plants")
+    suspend fun getPlants(@Path("userId") userId: String): List<PlantResponse>
+
+    @GET("plants/{id}")
+    suspend fun getPlant(@Path("id") id: String): PlantResponse
+
+    @POST("plants")
+    suspend fun createPlant(@Body body: CreatePlantRequest): PlantResponse
+
+    @PUT("plants/{id}")
+    suspend fun updatePlant(@Path("id") id: String, @Body body: UpdatePlantRequest): PlantResponse
+
+    @DELETE("plants/{id}")
+    suspend fun deletePlant(@Path("id") id: String)
+
+    @POST("plants/{id}/watering")
+    suspend fun waterPlant(@Path("id") id: String): WateringResponse
 }
+

@@ -67,6 +67,10 @@ class SecureStorage(context: Context) {
         get() = prefs.getString(KEY_FULL_NAME, null)
         private set(value) = prefs.edit().putString(KEY_FULL_NAME, value).apply()
 
+    var email: String?
+        get() = prefs.getString(KEY_EMAIL, null)
+        private set(value) = prefs.edit().putString(KEY_EMAIL, value).apply()
+
     var roles: List<String>
         get() = prefs.getString(KEY_ROLES, null)?.split("|") ?: emptyList()
         private set(value) = prefs.edit().putString(KEY_ROLES, value.joinToString("|")).apply()
@@ -90,12 +94,14 @@ class SecureStorage(context: Context) {
         refreshToken: String,
         userId: String,
         fullName: String,
+        email: String,
         roles: List<String>,
     ) {
         this.accessToken = accessToken
         this.refreshToken = refreshToken
         this.userId = userId
         this.fullName = fullName
+        this.email = email
         this.roles = roles
     }
 
@@ -109,6 +115,7 @@ class SecureStorage(context: Context) {
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_FULL_NAME = "full_name"
+        private const val KEY_EMAIL = "email"
         private const val KEY_ROLES = "roles"
         private const val KEY_PLANT_ID = "current_plant_id"
         private const val KEY_DEVICE_ID = "device_id"

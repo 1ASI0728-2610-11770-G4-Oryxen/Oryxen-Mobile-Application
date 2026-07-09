@@ -15,23 +15,27 @@ class ApiProvider(context: Context) {
     val secureStorage = SecureStorage(context)
 
     // Backwards-compatible session facade for existing screen code
-    val session = object {
-        val fullName: String? get() = secureStorage.fullName
-        val roles: List<String> get() = secureStorage.roles
-        val isAuthenticated: Boolean get() = secureStorage.isAuthenticated
+    val session = Session(secureStorage)
+
+    class Session(private val store: SecureStorage) {
+        val fullName: String? get() = store.fullName
+        val email: String? get() = store.email
+        val roles: List<String> get() = store.roles
+        val isAuthenticated: Boolean get() = store.isAuthenticated
 
         fun saveAccessToken(token: String) {
             val userId = SecureStorage.decodeUserId(token)
-            secureStorage.saveTokens(
+            store.saveTokens(
                 accessToken = token,
-                refreshToken = secureStorage.refreshToken ?: "",
+                refreshToken = store.refreshToken ?: "",
                 userId = userId,
-                fullName = secureStorage.fullName ?: "",
-                roles = secureStorage.roles,
+                fullName = store.fullName ?: "",
+                email = store.email ?: "",
+                roles = store.roles,
             )
         }
 
-        fun clear() = secureStorage.clear()
+        fun clear() = store.clear()
     }
 
     private val json = Json { ignoreUnknownKeys = true }

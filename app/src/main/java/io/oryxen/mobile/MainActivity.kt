@@ -7,12 +7,17 @@ import io.oryxen.mobile.data.remote.ApiProvider
 import io.oryxen.mobile.ui.OryxenNavHost
 import io.oryxen.mobile.ui.theme.OryxenTheme
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import io.oryxen.mobile.data.AppPreferences
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ApiProvider.init(this)
         setContent {
-            OryxenTheme {
+            val isDarkTheme by AppPreferences.isDarkMode.collectAsState()
+            OryxenTheme(darkTheme = isDarkTheme) {
                 OryxenNavHost()
             }
         }

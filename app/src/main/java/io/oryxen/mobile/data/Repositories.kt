@@ -19,7 +19,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import io.oryxen.mobile.data.remote.CommunityCommentResponse
 import io.oryxen.mobile.data.remote.CommunityLikeResponse
 import io.oryxen.mobile.data.remote.CommunityPostResponse
+import io.oryxen.mobile.data.remote.CheckoutRequestBody
 import io.oryxen.mobile.data.remote.CreateCommentRequest
+import io.oryxen.mobile.data.remote.CreatePlantRequest
+import io.oryxen.mobile.data.remote.PlantResponse
+import io.oryxen.mobile.data.remote.SubscriptionResponse
+import io.oryxen.mobile.data.remote.UpdatePlantRequest
+import io.oryxen.mobile.data.remote.WateringResponse
 import io.oryxen.mobile.security.SecureStorage
 
 object AuthRepository {
@@ -32,6 +38,7 @@ object AuthRepository {
             refreshToken = auth.refreshToken,
             userId = userId,
             fullName = auth.fullName,
+            email = auth.email,
             roles = auth.roles,
         )
         return auth
@@ -46,6 +53,7 @@ object AuthRepository {
             refreshToken = auth.refreshToken,
             userId = userId,
             fullName = auth.fullName,
+            email = auth.email,
             roles = auth.roles,
         )
         return auth
@@ -76,6 +84,13 @@ object DiagnosisRepository {
 
     suspend fun forPlant(plantId: String): List<DiagnosisResponse> =
         provider.api.diagnosesByPlant(plantId)
+
+    suspend fun createDiagnosis(plantId: String, imageBytes: ByteArray, fileName: String = "diagnosis.jpg"): DiagnosisResponse {
+        val plantIdPart = plantId.toRequestBody("text/plain".toMediaTypeOrNull())
+        val body = imageBytes.toRequestBody("image/*".toMediaTypeOrNull())
+        val imagePart = MultipartBody.Part.createFormData("image", fileName, body)
+        return provider.api.createDiagnosis(plantIdPart, imagePart)
+    }
 }
 
 object BillingRepository {
@@ -105,13 +120,15 @@ object NotificationRepository {
 }
 
 object AnalyticsRepository {
-    private val provider get() = ApiProvider.instance
+    private val api get() = ApiProvider.instance.api
 
-    suspend fun getDashboard(): DashboardResponse =
-        provider.api.getDashboard()
+    suspend fun getDashboard(): DashboardResponse {
+        return api.getDashboard()
+    }
 
-    suspend fun getPlantTrends(plantId: String): PlantTrendResponse =
-        provider.api.getPlantTrends(plantId)
+    suspend fun getPlantTrends(plantId: String): PlantTrendResponse {
+        return api.getPlantTrends(plantId)
+    }
 }
 
 object CommunityRepository {
@@ -135,4 +152,26 @@ object CommunityRepository {
 
     suspend fun toggleLike(postId: String): CommunityLikeResponse =
         provider.api.toggleCommunityLike(postId)
+}
+
+object PlantRepository {
+    private val provider get() = ApiProvider.instance
+
+    suspend fun getAll(): List<PlantResponse> =
+        provider.api.getPlants(provider.secureStorage.userId ?: "")
+
+    suspend fun getById(id: String): PlantResponse =
+        provider.api.getPlant(id)
+
+    suspend fun create(name: String, type: String, location: String?): PlantResponse =
+        provider.api.createPlant(CreatePlantRequest(name.trim(), type.trim(), location?.trim()))
+
+    suspend fun update(id: String, name: String, type: String, location: String?): PlantResponse =
+        provider.api.updatePlant(id, UpdatePlantRequest(name.trim(), type.trim(), location?.trim()))
+
+    suspend fun delete(id: String) =
+        provider.api.deletePlant(id)
+
+    suspend fun water(id: String): WateringResponse =
+        provider.api.waterPlant(id)
 }

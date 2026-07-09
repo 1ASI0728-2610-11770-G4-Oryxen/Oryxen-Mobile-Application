@@ -185,3 +185,40 @@ data class CommunityLikeResponse(
 
 @Serializable
 data class CreateCommentRequest(val content: String)
+
+// ── Plants ──────────────────────────────────────────────────────────────
+
+@Serializable
+data class PlantResponse(
+    val id: String,
+    val userId: String,
+    val name: String,
+    val type: String,
+    val location: String? = null,
+    val imageUrl: String? = null,
+    val healthScore: Int = 0,
+    val status: String = "Unknown",
+    val createdAt: String,
+    val updatedAt: String? = null,
+)
+
+@Serializable
+data class CreatePlantRequest(
+    val name: String,
+    val type: String,
+    val location: String? = null,
+)
+
+@Serializable
+data class UpdatePlantRequest(
+    val name: String,
+    val type: String,
+    val location: String? = null,
+)
+
+@Serializable
+data class WateringResponse(
+    val id: String,
+    val plantId: String,
+    val wateredAt: String,
+)
