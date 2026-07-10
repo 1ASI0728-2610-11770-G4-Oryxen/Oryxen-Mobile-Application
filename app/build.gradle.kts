@@ -41,6 +41,7 @@ android {
 
     buildTypes {
         debug {
+<<<<<<< HEAD
             buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
             // Only needed when -PapiBaseUrl points at a plaintext local backend.
             manifestPlaceholders["usesCleartextTraffic"] = debugApiBaseUrl.startsWith("http://")
@@ -49,6 +50,15 @@ android {
             isMinifyEnabled = false
             buildConfigField("String", "API_BASE_URL", "\"$deployedApiBaseUrl\"")
             manifestPlaceholders["usesCleartextTraffic"] = false
+=======
+            // Emulator loopback to the local backend (http allowed only in debug).
+            buildConfigField("String", "API_BASE_URL", "\"https://oryxen-backend.onrender.com/api/v1/\"")
+        }
+        release {
+            isMinifyEnabled = false
+            // Public HTTPS backend (Render). Replace with the real URL before a release build.
+            buildConfigField("String", "API_BASE_URL", "\"https://oryxen-backend.onrender.com/api/v1/\"")
+>>>>>>> 5cc71218378079a59744678168b5cce66236707d
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
