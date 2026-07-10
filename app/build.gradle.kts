@@ -20,12 +20,12 @@ android {
     buildTypes {
         debug {
             // Emulator loopback to the local backend (http allowed only in debug).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5170/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://oryxen-backend.onrender.com/api/v1/\"")
         }
         release {
             isMinifyEnabled = false
             // Public HTTPS backend (Render). Replace with the real URL before a release build.
-            buildConfigField("String", "API_BASE_URL", "\"https://YOUR-BACKEND.onrender.com/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://oryxen-backend.onrender.com/api/v1/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
