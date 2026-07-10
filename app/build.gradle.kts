@@ -3,7 +3,20 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.gms.google-services")
+    id("com.google.firebase.appdistribution")
 }
+
+/**
+ * Backend base URL. Retrofit resolves relative paths ("auth/login") against it, so it must
+ * include the "/api/v1/" prefix AND end with a slash.
+ *
+ * Both build types default to the deployed Render API so a fresh clone runs with no setup.
+ * Point a debug build at a local backend with:
+ *   ./gradlew installDebug -PapiBaseUrl=http://10.0.2.2:5170/api/v1/
+ */
+val deployedApiBaseUrl = "https://oryxen-backend.onrender.com/api/v1/"
+val debugApiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: deployedApiBaseUrl
 
 android {
     namespace = "io.oryxen.mobile"
@@ -17,19 +30,30 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
-            // Emulator loopback to the local backend (http allowed only in debug).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5170/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
+            // Only needed when -PapiBaseUrl points at a plaintext local backend.
+            manifestPlaceholders["usesCleartextTraffic"] = debugApiBaseUrl.startsWith("http://")
         }
         release {
             isMinifyEnabled = false
-            // Public HTTPS backend (Render). Replace with the real URL before a release build.
-            buildConfigField("String", "API_BASE_URL", "\"https://YOUR-BACKEND.onrender.com/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"$deployedApiBaseUrl\"")
+            manifestPlaceholders["usesCleartextTraffic"] = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -46,6 +70,12 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+firebaseAppDistribution {
+    artifactType = "APK"
+    releaseNotesFile = file("release-notes.txt").toString()
+    testers = file("testers.txt").toString()
 }
 
 dependencies {
@@ -72,4 +102,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
+
+    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
+
+    implementation("com.google.firebase:firebase-analytics")
 }

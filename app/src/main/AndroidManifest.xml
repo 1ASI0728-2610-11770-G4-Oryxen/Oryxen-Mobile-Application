@@ -8,10 +8,11 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Oryxen"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
 
-        <!-- usesCleartextTraffic is enabled for local development against the
-             http://10.0.2.2:5170 backend (emulator loopback). Disable for release. -->
+        <!-- Resolved per build type in app/build.gradle.kts: false for release (HTTPS-only
+             against Render) and for debug builds that use the deployed backend; true only
+             when -PapiBaseUrl points debug at a plaintext local backend. -->
 
         <activity
             android:name=".MainActivity"
