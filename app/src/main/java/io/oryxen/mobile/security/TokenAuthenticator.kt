@@ -81,6 +81,7 @@ class TokenAuthenticator(
     }
 
     companion object {
-        const val BASE_URL = "http://10.0.2.2:5170/api/v1/"
+        /** Same per-build-type base URL as ApiProvider (single source: BuildConfig). */
+        val BASE_URL: String = io.oryxen.mobile.BuildConfig.API_BASE_URL
     }
 }

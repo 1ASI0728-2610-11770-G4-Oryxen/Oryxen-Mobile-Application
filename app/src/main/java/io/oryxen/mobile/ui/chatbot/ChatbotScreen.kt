@@ -18,7 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
+import io.oryxen.mobile.data.ChatRepository
 import kotlinx.coroutines.launch
 
 data class ChatMessage(
@@ -45,17 +45,31 @@ fun ChatbotScreen(
     val OryxenGreen = Color(0xFF2E7D32)
 
     fun sendMessage() {
-        if (messageText.isBlank()) return
-        
+        if (messageText.isBlank() || isTyping) return
+
         val userMsg = messageText
         messages.add(ChatMessage(System.currentTimeMillis().toString(), userMsg, true))
         messageText = ""
         isTyping = true
-        
+
         coroutineScope.launch {
-            delay(1500) // mock network delay
+            // Compact context: the last few turns, so the assistant can follow the thread.
+            val context = messages
+                .dropLast(1)
+                .takeLast(6)
+                .joinToString("\n") { m -> (if (m.isUser) "User: " else "Assistant: ") + m.text }
+                .ifBlank { null }
+
+            val reply = try {
+                // Server-side Gemini via POST /api/v1/ai/chat — no AI key in the app.
+                ChatRepository.send(userMsg, context).reply
+            } catch (e: Exception) {
+                // Explicit offline fallback, clearly labeled as such.
+                "(Offline fallback — could not reach the Oryxen assistant: ${e.message ?: "network error"}.) " +
+                    "Quick tip: check soil moisture before watering; most plants prefer the top layer of soil to dry out first."
+            }
             isTyping = false
-            messages.add(ChatMessage(System.currentTimeMillis().toString(), "I'm currently in maintenance mode, but soon I'll be able to connect directly to the Groq LLM API to answer all your plant care questions!", false))
+            messages.add(ChatMessage(System.currentTimeMillis().toString(), reply, false))
         }
     }
 

@@ -19,6 +19,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import io.oryxen.mobile.data.remote.CommunityCommentResponse
 import io.oryxen.mobile.data.remote.CommunityLikeResponse
 import io.oryxen.mobile.data.remote.CommunityPostResponse
+import io.oryxen.mobile.data.remote.AssignSensorRequest
+import io.oryxen.mobile.data.remote.ChatRequest
+import io.oryxen.mobile.data.remote.ChatResponse
 import io.oryxen.mobile.data.remote.CheckoutRequestBody
 import io.oryxen.mobile.data.remote.CreateCommentRequest
 import io.oryxen.mobile.data.remote.CreatePlantRequest
@@ -172,6 +175,17 @@ object PlantRepository {
     suspend fun delete(id: String) =
         provider.api.deletePlant(id)
 
+    suspend fun assignSensor(id: String, deviceId: String): PlantResponse =
+        provider.api.assignSensor(id, AssignSensorRequest(deviceId))
+
     suspend fun water(id: String): WateringResponse =
         provider.api.waterPlant(id)
+}
+
+object ChatRepository {
+    private val provider get() = ApiProvider.instance
+
+    /** Sends a user message to the server-side Gemini assistant (POST /ai/chat). */
+    suspend fun send(message: String, context: String? = null): ChatResponse =
+        provider.api.chat(ChatRequest(message.trim(), context))
 }

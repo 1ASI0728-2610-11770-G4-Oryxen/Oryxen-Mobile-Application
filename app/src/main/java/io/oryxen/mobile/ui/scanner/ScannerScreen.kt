@@ -96,17 +96,23 @@ class ScannerViewModel : ViewModel() {
     }
 
     fun assignToPlant(plant: PlantResponse) {
-        _state.update { it.copy(loading = true) }
+        val deviceId = _state.value.scannedDeviceId ?: return
+        _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            // TODO: Call backend to link device to plant
-            // For now just simulate success
-            kotlinx.coroutines.delay(800)
-            _state.update {
-                it.copy(
-                    step = ScannerStep.DONE,
-                    loading = false,
-                    selectedPlantName = plant.name,
-                )
+            try {
+                // Real Sensor Lite binding: POST /api/v1/plants/{id}/sensor.
+                PlantRepository.assignSensor(plant.id, deviceId)
+                _state.update {
+                    it.copy(
+                        step = ScannerStep.DONE,
+                        loading = false,
+                        selectedPlantName = plant.name,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(loading = false, error = e.message ?: "Could not link the sensor")
+                }
             }
         }
     }
